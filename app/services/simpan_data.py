@@ -19,47 +19,45 @@ def decrypt_chacha(nonce_b64, ciphertext_b64):
 
     start = time.perf_counter()
     plaintext = chacha.decrypt(nonce, ciphertext, None)
-    decrypt_time = round((time.perf_counter() - start) * 1000, 2)  # ✅ dibulatkan 2 digit
-
+    decrypt_time = round((time.perf_counter() - start) * 1000, 3)  # ✅ format 0.000
     return plaintext, decrypt_time
 
 
-
-
-# === Fungsi Simpan Data ===
+# === Fungsi Simpan Data ke DB ===
 def simpan_ke_database(payload):
     try:
-        total_start = time.time()
-
         waktu_obj = datetime.fromisoformat(payload["timestamp"])
-        nama_file = payload["gambar"]["nama_file"]
+        gambar_data = payload["gambar"]
+        nama_file = gambar_data["nama_file"]
 
-        # Cegah duplikat berdasarkan nama_file
+        # ⛔ Cek duplikat berdasarkan nama file
         if Gambar.query.filter_by(nama_file=nama_file).first():
-            print(f"⚠️ Duplikat terdeteksi, nama file '{nama_file}' sudah ada.")
+            print(f"⚠️ Duplikat file: '{nama_file}' sudah ada di database.")
             return
 
         # === Dekripsi OCR ===
-        ocr_data = payload.get("ocr", {})
-        ocr_plain, _ = decrypt_chacha(ocr_data["nonce"], ocr_data["ciphertext"])
+        ocr_data = payload["ocr"]
+        ocr_plain, decrypt_ocr_ms = decrypt_chacha(ocr_data["nonce"], ocr_data["ciphertext"])
         ocr_text = ocr_plain.decode("utf-8")
+        encrypt_ocr_ms = round(ocr_data.get("encrypt_time_ms", 0), 3)
         poly1305_tag = ocr_data.get("poly1305_tag")
-        encrypt_ocr_ms = ocr_data.get("encrypt_time_ms")
 
-        # === Dekripsi dan simpan gambar ===
-        gambar_data = payload.get("gambar", {})
+        # === Dekripsi Gambar ===
         gambar_bytes, decrypt_img_ms = decrypt_chacha(gambar_data["nonce"], gambar_data["ciphertext"])
-        print(f"🕒 Waktu dekripsi gambar: {decrypt_img_ms} ms")
+        encrypt_img_ms = round(gambar_data.get("encrypt_time_ms", 0), 3)
+        total_ms = round(encrypt_img_ms + decrypt_img_ms, 3)
 
+        print(f"🕒 Waktu enkripsi gambar : {encrypt_img_ms:.3f} ms")
+        print(f"🕒 Waktu dekripsi gambar : {decrypt_img_ms:.3f} ms")
 
-
+        # === Simpan Gambar ke Folder ===
         save_dir = os.path.join("static", "gambar_plat")
         os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, gambar_data["nama_file"])
+        save_path = os.path.join(save_dir, nama_file)
         with open(save_path, "wb") as f:
             f.write(gambar_bytes)
 
-        # === Simpan Pelanggaran ===
+        # === Simpan ke Tabel Pelanggaran ===
         pelanggaran = Pelanggaran(
             waktu=waktu_obj,
             plat_nomor=payload["plat_nomor"],
@@ -69,9 +67,7 @@ def simpan_ke_database(payload):
         db.session.add(pelanggaran)
         db.session.commit()
 
-        # === Simpan Keamanan ===
-        encrypt_img_ms = round(gambar_data.get("encrypt_time_ms", 0), 2)
-        total_ms = round(encrypt_img_ms + decrypt_img_ms, 2)
+        # === Simpan ke Tabel Keamanan ===
         keamanan = Keamanan(
             pelanggaran_id=pelanggaran.id,
             nonce=ocr_data["nonce"],
@@ -86,9 +82,9 @@ def simpan_ke_database(payload):
         )
         db.session.add(keamanan)
 
-        # === Simpan Gambar ===
+        # === Simpan ke Tabel Gambar ===
         gambar = Gambar(
-            nama_file=gambar_data["nama_file"],
+            nama_file=nama_file,
             tipe="crop",
             resolusi="400x130",
             ukuran_byte=gambar_data["ukuran_byte"],
@@ -98,7 +94,7 @@ def simpan_ke_database(payload):
         db.session.add(gambar)
 
         db.session.commit()
-        print(f"✅ Data berhasil disimpan (plat: {payload['plat_nomor']}, decrypt: {decrypt_img_ms} ms)")
+        print(f"✅ Data berhasil disimpan (Plat: {payload['plat_nomor']}, Waktu total: {total_ms:.3f} ms)")
 
     except Exception as e:
         print(f"❌ Gagal menyimpan ke database: {e}")

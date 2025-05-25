@@ -9,33 +9,37 @@ block content %}
   <p class="text-light">Tabel semua pelanggaran terdeteksi</p>
 </div>
 
-<table class="table table-bordered table-hover mt-4 bg-white">
-  <thead class="table-dark">
-    <tr>
-      <th>No</th>
-      <th>Waktu</th>
-      <th>Plat Nomor</th>
-      <th>Aksi</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for item in data %}
-    <tr>
-      <td>{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</td>
-      <td>{{ item.waktu | datetimeformat }}</td>
-      <td>{{ item.plat_nomor }}</td>
-      <td>
-        <a
-          href="{{ url_for('main.detail', id=item.id) }}"
-          class="btn btn-sm btn-outline-secondary"
-        >
-          🔍 Detail
-        </a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div id="table-container" class="table-responsive">
+  <table class="table table-bordered table-hover mt-4 bg-white">
+    <thead class="table-dark text-center">
+      <tr>
+        <th>No</th>
+        <th>Waktu</th>
+        <th>Plat Nomor</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in data %}
+      <tr class="slide-row text-center">
+        <td>
+          {{ loop.index + ((pagination.page - 1) * pagination.per_page) }}
+        </td>
+        <td>{{ item.waktu | datetimeformat }}</td>
+        <td>{{ item.plat_nomor }}</td>
+        <td>
+          <a
+            href="{{ url_for('main.detail', id=item.id) }}"
+            class="btn btn-sm btn-outline-secondary"
+          >
+            🔍 Detail
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
 <!-- Pagination -->
 <div class="d-flex justify-content-end mt-4">
@@ -89,5 +93,39 @@ block content %}
     </ul>
   </nav>
 </div>
+
+<!-- Animasi CSS -->
+<style>
+  .slide-row {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s ease;
+  }
+  .slide-row.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+
+<!-- JS Efek Slide -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll("tbody tr.slide-row");
+    rows.forEach((row, index) => {
+      setTimeout(() => {
+        row.classList.add("active");
+      }, index * 70); // Delay antar baris
+    });
+
+    const table = document.getElementById("table-container");
+    document.querySelectorAll(".pagination a").forEach((link) => {
+      link.addEventListener("click", () => {
+        if (table) {
+          table.style.opacity = 0;
+        }
+      });
+    });
+  });
+</script>
 
 {% endblock %}

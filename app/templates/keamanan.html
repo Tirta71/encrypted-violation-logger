@@ -11,7 +11,8 @@ block content %}
   </p>
 </div>
 
-<div class="table-responsive">
+<!-- Tambahkan ID untuk animasi -->
+<div id="table-container" class="table-responsive">
   <table class="table table-bordered table-hover bg-white mt-4 align-middle">
     <thead class="table-dark text-center">
       <tr>
@@ -21,19 +22,17 @@ block content %}
         <th>Plat Nomor</th>
         <th>Confidence</th>
         <th>Status Tag</th>
-        <th>Gambar Valid</th>
         <th>Asal Data</th>
         <th>Aksi</th>
       </tr>
     </thead>
     <tbody>
       {% for item in data %}
-      <tr>
+      <tr class="slide-row">
         <td class="text-center">
           {{ loop.index + ((pagination.page - 1) * pagination.per_page) }}
         </td>
         <td>{{ item.waktu | datetimeformat }}</td>
-
         <td class="text-center">
           {% if item.gambars %} {% for gambar in item.gambars %}
           <img
@@ -46,10 +45,8 @@ block content %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
-
         <td class="text-center">{{ item.plat_nomor }}</td>
         <td class="text-center">{{ item.confidence | round(2) }}%</td>
-
         <td class="text-center">
           {% if item.keamanan %} {% if item.keamanan.poly1305_valid %}
           <span class="badge bg-success">Valid</span>
@@ -59,15 +56,6 @@ block content %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
-
-        <td class="text-center">
-          {% if item.keamanan and item.keamanan.gambar_valid %}
-          <span class="badge bg-success">Valid</span>
-          {% else %}
-          <span class="badge bg-danger">Invalid</span>
-          {% endif %}
-        </td>
-
         <td class="text-center">{{ item.device.nama }}</td>
         <td class="text-center">
           <a
@@ -84,7 +72,6 @@ block content %}
 </div>
 
 <!-- Pagination -->
-
 <div class="d-flex justify-content-end mt-4">
   <nav>
     <ul class="pagination">
@@ -136,5 +123,39 @@ block content %}
     </ul>
   </nav>
 </div>
+
+<!-- CSS & JS Transisi -->
+<style>
+  tr.slide-row {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s ease;
+  }
+
+  tr.slide-row.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const rows = document.querySelectorAll("tbody tr.slide-row");
+    rows.forEach((row, index) => {
+      setTimeout(() => {
+        row.classList.add("active");
+      }, index * 70); // Delay per baris
+    });
+
+    const table = document.getElementById("table-container");
+    document.querySelectorAll(".pagination a").forEach((link) => {
+      link.addEventListener("click", () => {
+        if (table) {
+          table.style.opacity = 0;
+        }
+      });
+    });
+  });
+</script>
 
 {% endblock %}
