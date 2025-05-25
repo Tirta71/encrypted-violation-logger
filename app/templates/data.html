@@ -1,0 +1,93 @@
+{% extends 'base.html' %} {% block title %}Data Pelanggaran{% endblock %} {%
+block content %}
+
+<div
+  class="w-100 mb-4 p-4 rounded"
+  style="background-color: #212529; color: #fff"
+>
+  <h2>📸 Data Pelanggaran</h2>
+  <p class="text-light">Tabel semua pelanggaran terdeteksi</p>
+</div>
+
+<table class="table table-bordered table-hover mt-4 bg-white">
+  <thead class="table-dark">
+    <tr>
+      <th>No</th>
+      <th>Waktu</th>
+      <th>Plat Nomor</th>
+      <th>Aksi</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in data %}
+    <tr>
+      <td>{{ loop.index + ((pagination.page - 1) * pagination.per_page) }}</td>
+      <td>{{ item.waktu | datetimeformat }}</td>
+      <td>{{ item.plat_nomor }}</td>
+      <td>
+        <a
+          href="{{ url_for('main.detail', id=item.id) }}"
+          class="btn btn-sm btn-outline-secondary"
+        >
+          🔍 Detail
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Pagination -->
+<div class="d-flex justify-content-end mt-4">
+  <nav>
+    <ul class="pagination">
+      {% if pagination.has_prev %}
+      <li class="page-item">
+        <a
+          class="page-link bg-dark text-white border-dark"
+          href="{{ url_for('main.data', page=pagination.prev_num) }}"
+          >«</a
+        >
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link bg-dark text-white border-dark">«</span>
+      </li>
+      {% endif %} {% for page_num in pagination.iter_pages(left_edge=2,
+      right_edge=2, left_current=2, right_current=2) %} {% if page_num %} {% if
+      page_num == pagination.page %}
+      <li class="page-item active">
+        <span class="page-link bg-white text-dark border-dark fw-bold"
+          >{{ page_num }}</span
+        >
+      </li>
+      {% else %}
+      <li class="page-item">
+        <a
+          class="page-link bg-dark text-white border-dark"
+          href="{{ url_for('main.data', page=page_num) }}"
+          >{{ page_num }}</a
+        >
+      </li>
+      {% endif %} {% else %}
+      <li class="page-item disabled">
+        <span class="page-link bg-dark text-white border-dark">…</span>
+      </li>
+      {% endif %} {% endfor %} {% if pagination.has_next %}
+      <li class="page-item">
+        <a
+          class="page-link bg-dark text-white border-dark"
+          href="{{ url_for('main.data', page=pagination.next_num) }}"
+          >»</a
+        >
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link bg-dark text-white border-dark">»</span>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+
+{% endblock %}

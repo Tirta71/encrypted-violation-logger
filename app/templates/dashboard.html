@@ -1,0 +1,71 @@
+{% extends 'base.html' %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+<div
+  class="w-100 mb-4 p-4 rounded"
+  style="background-color: #212529; color: #fff"
+>
+  <div>
+    <h2 class="mb-0">🏠 Dashboard</h2>
+    <p class="mb-0 text-light">Ringkasan sistem pelanggaran lalu lintas</p>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-md-4">
+    <div class="card text-white bg-primary mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Total Pelanggaran</h5>
+        <p class="card-text fs-3">{{ total }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white bg-success mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Data Valid</h5>
+        <p class="card-text fs-3">{{ valid }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white bg-danger mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Data Tidak Valid</h5>
+        <p class="card-text fs-3">{{ invalid }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Grafik Harian -->
+<div class="mt-5">
+  <h4>Grafik Harian Pelanggaran</h4>
+  <canvas id="grafikHarian"></canvas>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('grafikHarian').getContext('2d');
+  const grafikHarian = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: {{ chart_labels|safe }},
+      datasets: [{
+        label: 'Jumlah Pelanggaran',
+        data: {{ chart_data|safe }},
+        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

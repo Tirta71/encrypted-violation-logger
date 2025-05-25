@@ -1,0 +1,199 @@
+{% extends 'base.html' %} {% block title %}Detail Keamanan{% endblock %} {%
+block content %}
+
+<!-- Header -->
+<div
+  class="px-4 py-4 mb-4"
+  style="background-color: #212529; color: white; border-radius: 0.75rem"
+>
+  <h2 class="mb-1">🔐 Detail Keamanan</h2>
+  <p class="text-light">
+    Informasi teknis lengkap dari proses enkripsi dan validasi gambar
+    pelanggaran.
+  </p>
+</div>
+
+<!-- 🖼️ Card Gambar -->
+<div class="card border-0 shadow rounded-4 mb-4">
+  <div class="card-header bg-dark text-white py-4 rounded-top-4">
+    <h5 class="mb-0">🖼️ Data Gambar</h5>
+  </div>
+  <div class="card-body bg-light rounded-bottom-4">
+    {% if record.gambars %}
+    <div class="row g-4 justify-content-center">
+      {% for gambar in record.gambars %}
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="card h-100 border-0 shadow-sm">
+          <img
+            src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
+            class="card-img-top p-2"
+            style="
+              height: 180px;
+              object-fit: contain;
+              background-color: #f8f9fa;
+            "
+            alt="{{ gambar.nama_file }}"
+          />
+          <div class="card-body text-center small text-muted">
+            <div><strong>Tipe:</strong> {{ gambar.tipe }}</div>
+            <div><strong>Resolusi:</strong> {{ gambar.resolusi }}</div>
+            <div>
+              <strong>Ukuran:</strong> {{ gambar.ukuran_terenkripsi }} bytes
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 📋 Informasi Pelanggaran & Enkripsi -->
+<div class="row mb-4">
+  <!-- Informasi Pelanggaran -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow rounded-4 h-100">
+      <div class="card-header bg-dark text-white py-4">
+        <h5 class="mb-0">🚘 Informasi Pelanggaran</h5>
+      </div>
+      <div class="card-body">
+        <p><strong>🕒 Waktu:</strong> {{ record.waktu | datetimeformat }}</p>
+        <p><strong>🚘 Plat Nomor:</strong> {{ record.plat_nomor }}</p>
+        <p><strong>📍 Sumber Data:</strong> {{ record.device.nama }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Informasi Enkripsi -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow rounded-4 h-100">
+      <div class="card-header bg-dark text-white py-4">
+        <h5 class="mb-0">🔐 Informasi Enkripsi</h5>
+      </div>
+      <div class="card-body">
+        {% if record.keamanan %}
+        <p>
+          <strong>📦 Ciphertext Length:</strong> {{
+          record.keamanan.ciphertext_len }} byte
+        </p>
+        <p>
+          <strong>🔁 Waktu Enkripsi:</strong> {{ record.keamanan.encrypt_time_ms
+          }} ms
+        </p>
+        <p>
+          <strong>🔓 Waktu Dekripsi:</strong> {{ record.keamanan.decrypt_time_ms
+          }} ms
+        </p>
+        <p>
+          <strong>⏱️ Total Proses:</strong> {{ record.keamanan.total_process_ms
+          }} ms
+        </p>
+        <p>
+          <strong>🧾 Nonce:</strong>
+          <code>{{ record.keamanan.nonce or '-' }}</code>
+        </p>
+        <p>
+          <strong>🔐 Tag Poly1305:</strong>
+          <code>{{ record.keamanan.poly1305_tag or '-' }}</code>
+          {% if record.keamanan.poly1305_valid %}
+          <span class="badge bg-success ms-2">Valid</span>
+          {% else %}
+          <span class="badge bg-danger ms-2">Invalid</span>
+          {% endif %}
+        </p>
+        {% else %}
+        <p class="text-muted"><em>Data enkripsi belum tersedia.</em></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 🖼️ Status Validasi Gambar -->
+<div class="card border-0 shadow rounded-4 mb-4">
+  <div class="card-header bg-dark text-white py-4">
+    <h5 class="mb-0">🖼️ Status Validasi Gambar</h5>
+  </div>
+  <div class="card-body">
+    {% if record.keamanan %}
+    <p>
+      <strong>📡 Status Pengiriman:</strong> {{ record.keamanan.delivery_status
+      }}
+    </p>
+    <p>
+      <strong>🖼️ Status Gambar:</strong>
+      {% if record.keamanan.gambar_valid %}
+      <span class="badge bg-success ms-2">Cocok</span>
+      {% else %}
+      <span class="badge bg-danger ms-2">Tidak Cocok</span>
+      {% endif %}
+    </p>
+    {% else %}
+    <p class="text-muted"><em>Status gambar belum tersedia.</em></p>
+    {% endif %}
+
+    <!-- Grafik Bar Ukuran -->
+    {% if record.gambars %}
+    <div class="mt-4">
+      <canvas id="ukuranChart" height="200"></canvas>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tombol Kembali -->
+<a href="{{ url_for('main.keamanan') }}" class="btn btn-outline-dark mt-4">
+  ⬅ Kembali ke Log Keamanan
+</a>
+
+<!-- Chart.js CDN + Script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('ukuranChart')?.getContext('2d');
+  if (ctx) {
+    const ukuranChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [{% for g in record.gambars %}"{{ g.tipe }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [
+          {
+            label: 'Ukuran Asli (byte)',
+            data: [{% for g in record.gambars %}{{ g.ukuran_byte }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: '#0d6efd'
+          },
+          {
+            label: 'Ukuran Terenkripsi (byte)',
+            data: [{% for g in record.gambars %}{{ g.ukuran_terenkripsi }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: '#6c757d'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Bytes'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom'
+          },
+          title: {
+            display: true,
+            text: 'Perbandingan Ukuran Gambar Asli vs Terenkripsi'
+          }
+        }
+      }
+    });
+  }
+</script>
+
+{% endblock %}

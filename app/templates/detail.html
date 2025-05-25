@@ -1,0 +1,54 @@
+{% extends 'base.html' %} {% block title %}Detail Pelanggaran{% endblock %} {%
+block content %}
+
+<div
+  class="px-4 py-4 mb-4"
+  style="background-color: #212529; color: white; border-radius: 0.75rem"
+>
+  <h2 class="mb-1">🔍 Detail Pelanggaran</h2>
+  <p class="text-light">
+    Berikut adalah informasi lengkap dari pelanggaran yang terdeteksi.
+  </p>
+</div>
+
+<div class="card border-0 shadow rounded-4 overflow-hidden">
+  <div class="p-4" style="background-color: #212529">
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      {% if record.gambars %} {% for gambar in record.gambars %}
+      <div class="text-center">
+        <img
+          src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
+          class="img-thumbnail"
+          style="max-height: 300px; object-fit: contain"
+          alt="{{ gambar.nama_file }}"
+        />
+        <p class="text-white mt-2 small">
+          {{ gambar.tipe or 'Tidak ada tipe' }}
+        </p>
+      </div>
+      {% endfor %} {% else %}
+      <p class="text-white">Tidak ada gambar tersedia</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-body p-5">
+    <ul class="list-group list-group-flush">
+      <li class="list-group-item border-0 ps-0">
+        <strong>Waktu:</strong> {{ record.waktu | datetimeformat }}
+      </li>
+      <li class="list-group-item border-0 ps-0">
+        <strong>Plat Nomor:</strong> {{ record.plat_nomor }}
+      </li>
+
+      <li class="list-group-item border-0 ps-0">
+        <strong>Sumber Data:</strong> {{ record.device.nama }}
+      </li>
+    </ul>
+    <a href="{{ url_for('main.data') }}" class="btn btn-outline-dark mt-4"
+      >⬅ Kembali ke Data</a
+    >
+  </div>
+</div>
+
+{% endblock %}
