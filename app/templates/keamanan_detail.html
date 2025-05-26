@@ -13,97 +13,103 @@ block content %}
   </p>
 </div>
 
-<!-- 🖼️ Card Gambar -->
-<div class="card border-0 shadow rounded-4 mb-4">
-  <div class="card-header bg-dark text-white py-4 rounded-top-4">
-    <h5 class="mb-0">🖼️ Data Gambar</h5>
-  </div>
-  <div class="card-body bg-light rounded-bottom-4">
-    {% if record.gambars %}
-    <div class="row g-4 justify-content-center">
-      {% for gambar in record.gambars %}
-      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-        <div class="card h-100 border-0 shadow-sm">
-          <img
-            src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
-            class="card-img-top p-2"
-            style="
-              height: 180px;
-              object-fit: contain;
-              background-color: #f8f9fa;
-            "
-            alt="{{ gambar.nama_file }}"
-          />
-          <div class="card-body text-center small text-muted">
-            <div><strong>Tipe:</strong> {{ gambar.tipe }}</div>
-            <div><strong>Resolusi:</strong> {{ gambar.resolusi }}</div>
-            <div>
-              <strong>Ukuran:</strong> {{ gambar.ukuran_terenkripsi }} bytes
-            </div>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>
-    {% endif %}
-  </div>
-</div>
-
-<!-- 📋 Informasi Pelanggaran & Enkripsi -->
-<div class="row mb-4">
-  <!-- Informasi Pelanggaran -->
+<!-- 🖼️ Data Gambar + 🔐 Enkripsi dalam 1 Row -->
+<div class="row mb-4 align-items-stretch">
+  <!-- Data Gambar -->
   <div class="col-md-6">
-    <div class="card border-0 shadow rounded-4 h-100">
-      <div class="card-header bg-dark text-white py-4">
-        <h5 class="mb-0">🚘 Informasi Pelanggaran</h5>
+    <div class="card border-0 shadow rounded-4 h-100 d-flex flex-column">
+      <div class="card-header bg-dark text-white py-4 rounded-top-4">
+        <h5 class="mb-0">🖼️ Data Gambar</h5>
       </div>
-      <div class="card-body">
-        <p><strong>🕒 Waktu:</strong> {{ record.waktu | datetimeformat }}</p>
-        <p><strong>🚘 Plat Nomor:</strong> {{ record.plat_nomor }}</p>
-        <p><strong>📍 Sumber Data:</strong> {{ record.device.nama }}</p>
+      <div class="card-body bg-light rounded-bottom-4 flex-grow-1">
+        {% if record.gambars %} {% for gambar in record.gambars %}
+        <div class="mb-4">
+          <div class="text-center mb-3">
+            <img
+              src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
+              alt="{{ gambar.nama_file }}"
+              class="img-fluid rounded shadow-sm"
+              style="
+                max-height: 200px;
+                object-fit: contain;
+                background-color: #f8f9fa;
+                padding: 0.5rem;
+              "
+            />
+          </div>
+          <div class="text-muted ps-1 lh-lg">
+            <div class="d-flex mb-1">
+              <div style="min-width: 130px">📁 <strong>Tipe</strong></div>
+              <div>: {{ gambar.tipe }}</div>
+            </div>
+            <div class="d-flex mb-1">
+              <div style="min-width: 130px">📐 <strong>Resolusi</strong></div>
+              <div>: {{ gambar.resolusi }}</div>
+            </div>
+            <div class="d-flex mb-0">
+              <div style="min-width: 130px">💾 <strong>Ukuran</strong></div>
+              <div>: {{ gambar.ukuran_terenkripsi }} bytes</div>
+            </div>
+
+            {# Data pLat nomor #} {#
+            <div class="d-flex mb-0">
+              <div style="min-width: 130px">🔍 <strong>Plat Nomor</strong></div>
+              <div>: {{ record.plat_nomor }}</div>
+            </div>
+            #}
+          </div>
+          {% if not loop.last %}
+          <hr class="my-4" />
+          {% endif %}
+        </div>
+        {% endfor %} {% else %}
+        <p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>
+        {% endif %}
       </div>
     </div>
   </div>
 
   <!-- Informasi Enkripsi -->
   <div class="col-md-6">
-    <div class="card border-0 shadow rounded-4 h-100">
-      <div class="card-header bg-dark text-white py-4">
+    <div class="card border-0 shadow rounded-4 h-100 d-flex flex-column">
+      <div class="card-header bg-dark text-white py-4 rounded-top-4">
         <h5 class="mb-0">🔐 Informasi Enkripsi</h5>
       </div>
-      <div class="card-body">
+      <div class="card-body flex-grow-1 text-muted lh-lg">
         {% if record.keamanan %}
-        <p>
-          <strong>📦 Ciphertext Length:</strong> {{
-          record.keamanan.ciphertext_len }} byte
-        </p>
-        <p>
-          <strong>🔁 Waktu Enkripsi:</strong> {{ record.keamanan.encrypt_time_ms
-          }} ms
-        </p>
-        <p>
-          <strong>🔓 Waktu Dekripsi:</strong> {{ record.keamanan.decrypt_time_ms
-          }} ms
-        </p>
-        <p>
-          <strong>⏱️ Total Proses:</strong> {{ record.keamanan.total_process_ms
-          }} ms
-        </p>
-        <p>
-          <strong>🧾 Nonce:</strong>
-          <code>{{ record.keamanan.nonce or '-' }}</code>
-        </p>
-        <p>
-          <strong>🔐 Tag Poly1305:</strong>
-          <code>{{ record.keamanan.poly1305_tag or '-' }}</code>
-          {% if record.keamanan.poly1305_valid %}
-          <span class="badge bg-success ms-2">Valid</span>
-          {% else %}
-          <span class="badge bg-danger ms-2">Invalid</span>
-          {% endif %}
-        </p>
+        <div class="d-flex mb-1">
+          <div style="min-width: 180px">
+            <strong>📦 Ciphertext Length</strong>
+          </div>
+          <div>: {{ record.keamanan.ciphertext_len }} byte</div>
+        </div>
+        <div class="d-flex mb-1">
+          <div style="min-width: 180px"><strong>🔁 Waktu Enkripsi</strong></div>
+          <div>: {{ record.keamanan.encrypt_time_ms }} ms</div>
+        </div>
+        <div class="d-flex mb-1">
+          <div style="min-width: 180px"><strong>🔓 Waktu Dekripsi</strong></div>
+          <div>: {{ record.keamanan.decrypt_time_ms }} ms</div>
+        </div>
+        <div class="d-flex mb-1">
+          <div style="min-width: 180px"><strong>⏱️ Total Proses</strong></div>
+          <div>: {{ record.keamanan.total_process_ms }} ms</div>
+        </div>
+        <div class="d-flex mb-1">
+          <div style="min-width: 180px"><strong>🧾 Nonce</strong></div>
+          <div>: <code>{{ record.keamanan.nonce or '-' }}</code></div>
+        </div>
+        <div class="d-flex">
+          <div style="min-width: 180px"><strong>🔐 Tag Poly1305</strong></div>
+          <div>
+            : <code>{{ record.keamanan.poly1305_tag or '-' }}</code>
+            {% if record.keamanan.poly1305_valid %}
+            <span class="badge bg-success ms-2">Valid</span>
+            {% else %}
+            <span class="badge bg-danger ms-2">Invalid</span>
+            {% endif %}
+          </div>
+        </div>
         {% else %}
         <p class="text-muted"><em>Data enkripsi belum tersedia.</em></p>
         {% endif %}
@@ -117,20 +123,22 @@ block content %}
   <div class="card-header bg-dark text-white py-4">
     <h5 class="mb-0">🖼️ Status Validasi Gambar</h5>
   </div>
-  <div class="card-body">
+  <div class="card-body text-muted">
     {% if record.keamanan %}
-    <p>
-      <strong>📡 Status Pengiriman:</strong> {{ record.keamanan.delivery_status
-      }}
-    </p>
-    <p>
-      <strong>🖼️ Status Gambar:</strong>
-      {% if record.keamanan.gambar_valid %}
-      <span class="badge bg-success ms-2">Cocok</span>
-      {% else %}
-      <span class="badge bg-danger ms-2">Tidak Cocok</span>
-      {% endif %}
-    </p>
+    <div class="d-flex mb-2">
+      <div style="min-width: 180px"><strong>📡 Status Pengiriman</strong></div>
+      <div>: {{ record.keamanan.delivery_status }}</div>
+    </div>
+    <div class="d-flex">
+      <div style="min-width: 180px"><strong>🖼️ Status Gambar</strong></div>
+      <div>
+        : {% if record.keamanan.gambar_valid %}
+        <span class="badge bg-success ms-2">Cocok</span>
+        {% else %}
+        <span class="badge bg-danger ms-2">Tidak Cocok</span>
+        {% endif %}
+      </div>
+    </div>
     {% else %}
     <p class="text-muted"><em>Status gambar belum tersedia.</em></p>
     {% endif %}
@@ -145,8 +153,14 @@ block content %}
 </div>
 
 <!-- Tombol Kembali -->
-<a href="{{ url_for('main.keamanan') }}" class="btn btn-outline-dark mt-4">
-  ⬅ Kembali ke Log Keamanan
+<a
+  href="{{ url_for('main.keamanan') }}"
+  class="btn btn-outline-dark mt-4 px-4 py-2 shadow rounded-pill d-inline-flex align-items-center gap-2"
+  style="transition: all 0.3s ease; font-weight: 500"
+  onmouseover="this.classList.replace('btn-outline-dark','btn-dark')"
+  onmouseout="this.classList.replace('btn-dark','btn-outline-dark')"
+>
+  Kembali ke Log Keamanan
 </a>
 
 <!-- Chart.js CDN + Script -->

@@ -1,17 +1,15 @@
 {% extends 'base.html' %} {% block title %}Validasi & Keamanan{% endblock %} {%
 block content %}
 
-<div
-  class="px-4 py-4 mb-4"
-  style="background-color: #212529; color: white; border-radius: 0.75rem"
->
-  <h2>🔐 Validasi & Keamanan</h2>
+<!-- Header -->
+<div class="px-4 py-4 mb-4 bg-dark text-white rounded-4">
+  <h2 class="mb-1">🔐 Validasi & Keamanan</h2>
   <p class="text-light">
     Log lengkap enkripsi, autentikasi, dan keamanan data pelanggaran.
   </p>
 </div>
 
-<!-- Tambahkan ID untuk animasi -->
+<!-- Tabel -->
 <div id="table-container" class="table-responsive">
   <table class="table table-bordered table-hover bg-white mt-4 align-middle">
     <thead class="table-dark text-center">
@@ -19,35 +17,38 @@ block content %}
         <th>No</th>
         <th>Waktu</th>
         <th>Gambar</th>
-        <th>Plat Nomor</th>
-        <th>Confidence</th>
+        <th>Ukuran</th>
         <th>Status Tag</th>
-        <th>Asal Data</th>
+        <th>Waktu Proses</th>
         <th>Aksi</th>
       </tr>
     </thead>
     <tbody>
       {% for item in data %}
-      <tr class="slide-row">
-        <td class="text-center">
+      <tr class="slide-row text-center">
+        <td>
           {{ loop.index + ((pagination.page - 1) * pagination.per_page) }}
         </td>
         <td>{{ item.waktu | datetimeformat }}</td>
-        <td class="text-center">
-          {% if item.gambars %} {% for gambar in item.gambars %}
+        <td>
+          {% if item.gambars %}
           <img
-            src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
-            alt="{{ gambar.nama_file }}"
-            class="img-thumbnail mb-1"
-            style="height: 60px; object-fit: cover"
+            src="{{ url_for('static', filename='gambar_plat/' ~ item.gambars[0].nama_file) }}"
+            alt="gambar"
+            style="height: 50px; object-fit: contain; background-color: #f8f9fa"
+            class="rounded shadow-sm"
           />
-          {% endfor %} {% else %}
+          {% else %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
-        <td class="text-center">{{ item.plat_nomor }}</td>
-        <td class="text-center">{{ item.confidence | round(2) }}%</td>
-        <td class="text-center">
+        <td>
+          {% if item.gambars %} {{ item.gambars[0].ukuran_terenkripsi }} bytes
+          {% else %}
+          <span class="text-muted">-</span>
+          {% endif %}
+        </td>
+        <td>
           {% if item.keamanan %} {% if item.keamanan.poly1305_valid %}
           <span class="badge bg-success">Valid</span>
           {% else %}
@@ -56,8 +57,13 @@ block content %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
-        <td class="text-center">{{ item.device.nama }}</td>
-        <td class="text-center">
+        <td>
+          {% if item.keamanan %} {{ item.keamanan.total_process_ms }} ms {% else
+          %}
+          <span class="text-muted">-</span>
+          {% endif %}
+        </td>
+        <td>
           <a
             href="{{ url_for('main.keamanan_detail', id=item.id) }}"
             class="btn btn-sm btn-outline-primary"
@@ -131,7 +137,6 @@ block content %}
     transform: translateY(20px);
     transition: all 0.4s ease;
   }
-
   tr.slide-row.active {
     opacity: 1;
     transform: translateY(0);
@@ -144,7 +149,7 @@ block content %}
     rows.forEach((row, index) => {
       setTimeout(() => {
         row.classList.add("active");
-      }, index * 70); // Delay per baris
+      }, index * 70);
     });
 
     const table = document.getElementById("table-container");

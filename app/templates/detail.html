@@ -1,25 +1,28 @@
 {% extends 'base.html' %} {% block title %}Detail Pelanggaran{% endblock %} {%
 block content %}
 
-<div
-  class="px-4 py-4 mb-4"
-  style="background-color: #212529; color: white; border-radius: 0.75rem"
->
+<!-- Header -->
+<div class="px-4 py-4 mb-4 bg-dark text-white rounded-4">
   <h2 class="mb-1">🔍 Detail Pelanggaran</h2>
   <p class="text-light">
     Berikut adalah informasi lengkap dari pelanggaran yang terdeteksi.
   </p>
 </div>
 
-<div class="card border-0 shadow rounded-4 overflow-hidden">
-  <div class="p-4" style="background-color: #212529">
+<!-- Gambar -->
+<div class="card border-0 shadow rounded-4 overflow-hidden mb-4">
+  <div class="p-4 bg-dark">
     <div class="d-flex flex-wrap justify-content-center gap-3">
       {% if record.gambars %} {% for gambar in record.gambars %}
       <div class="text-center">
         <img
           src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
-          class="img-thumbnail"
-          style="max-height: 300px; object-fit: contain"
+          class="img-thumbnail shadow-sm"
+          style="
+            max-height: 300px;
+            object-fit: contain;
+            background-color: #f8f9fa;
+          "
           alt="{{ gambar.nama_file }}"
         />
         <p class="text-white mt-2 small">
@@ -32,22 +35,33 @@ block content %}
     </div>
   </div>
 
-  <div class="card-body p-5">
-    <ul class="list-group list-group-flush">
-      <li class="list-group-item border-0 ps-0">
-        <strong>Waktu:</strong> {{ record.waktu | datetimeformat }}
-      </li>
-      <li class="list-group-item border-0 ps-0">
-        <strong>Plat Nomor:</strong> {{ record.plat_nomor }}
-      </li>
+  <!-- Informasi Detil -->
+  <div class="card-body px-5 py-4 text-muted">
+    <div class="mb-3 d-flex">
+      <div style="min-width: 140px"><strong>🕒 Waktu</strong></div>
+      <div>: {{ record.waktu | datetimeformat }}</div>
+    </div>
+    <div class="mb-3 d-flex">
+      <div style="min-width: 140px"><strong>🚘 Plat Nomor</strong></div>
+      <div>: {{ record.plat_nomor }}</div>
+    </div>
+    <div class="d-flex">
+      <div style="min-width: 140px"><strong>📍 Sumber Data</strong></div>
+      <div>: {{ record.device.nama }}</div>
+    </div>
+  </div>
 
-      <li class="list-group-item border-0 ps-0">
-        <strong>Sumber Data:</strong> {{ record.device.nama }}
-      </li>
-    </ul>
-    <a href="{{ url_for('main.data') }}" class="btn btn-outline-dark mt-4"
-      >⬅ Kembali ke Data</a
+  <!-- Tombol Kembali -->
+  <div class="px-5 pb-4 text-end">
+    <a
+      href="{{ url_for('main.data') }}"
+      class="btn btn-outline-dark px-4 py-2 shadow rounded-pill d-inline-flex align-items-center gap-2"
+      style="transition: all 0.3s ease; font-weight: 500"
+      onmouseover="this.classList.replace('btn-outline-dark','btn-dark')"
+      onmouseout="this.classList.replace('btn-dark','btn-outline-dark')"
     >
+      Kembali ke Riwayat Pelanggaran
+    </a>
   </div>
 </div>
 
