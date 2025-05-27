@@ -18,8 +18,8 @@ block content %}
         <th>Waktu</th>
         <th>Gambar</th>
         <th>Ukuran</th>
-        <th>Status Tag</th>
         <th>Waktu Proses</th>
+        <th>Status Tag</th>
         <th>Aksi</th>
       </tr>
     </thead>
@@ -48,18 +48,19 @@ block content %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
+
+        <td>
+          {% if item.keamanan %} {{ item.keamanan.total_process_ms }} ms {% else
+          %}
+          <span class="text-muted">-</span>
+          {% endif %}
+        </td>
         <td>
           {% if item.keamanan %} {% if item.keamanan.poly1305_valid %}
           <span class="badge bg-success">Valid</span>
           {% else %}
           <span class="badge bg-danger">Invalid</span>
           {% endif %} {% else %}
-          <span class="text-muted">-</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if item.keamanan %} {{ item.keamanan.total_process_ms }} ms {% else
-          %}
           <span class="text-muted">-</span>
           {% endif %}
         </td>
