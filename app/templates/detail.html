@@ -45,6 +45,14 @@ block content %}
       <div style="min-width: 140px"><strong>🚘 Plat Nomor</strong></div>
       <div>: {{ record.plat_nomor }}</div>
     </div>
+    <div class="mb-3 d-flex">
+      <div style="min-width: 140px"><strong>🎯 Akurasi</strong></div>
+      <div>
+        : {% if record.confidence == record.confidence|int %} {{
+        record.confidence|int }}% {% else %} {{ record.confidence }}% {% endif
+        %}
+      </div>
+    </div>
     <div class="d-flex">
       <div style="min-width: 140px"><strong>📍 Sumber Data</strong></div>
       <div>: {{ record.device.nama }}</div>

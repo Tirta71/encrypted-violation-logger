@@ -16,8 +16,8 @@ block content %}
         <th>No</th>
         <th>Waktu</th>
         <th>Gambar</th>
-        <!-- Kolom tambahan -->
         <th>Plat Nomor</th>
+        <th>Akurasi</th>
         <th>Aksi</th>
       </tr>
     </thead>
@@ -49,6 +49,8 @@ block content %}
         </td>
 
         <td>{{ item.plat_nomor }}</td>
+        <td>{{ item.confidence | round(0) }}%</td>
+
         <td>
           <a
             href="{{ url_for('main.detail', id=item.id) }}"
