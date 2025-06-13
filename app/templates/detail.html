@@ -46,7 +46,7 @@ block content %}
       <div>: {{ record.plat_nomor }}</div>
     </div>
     <div class="mb-3 d-flex">
-      <div style="min-width: 140px"><strong>🎯 Akurasi</strong></div>
+      <div style="min-width: 140px"><strong>🎯 Confidence</strong></div>
       <div>
         : {% if record.confidence == record.confidence|int %} {{
         record.confidence|int }}% {% else %} {{ record.confidence }}% {% endif
