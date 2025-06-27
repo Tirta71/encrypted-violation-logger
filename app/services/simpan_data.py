@@ -131,22 +131,22 @@ def simpan_ke_database(payload):
             gambar_data["nonce"], gambar_data["ciphertext"], gambar_data["poly1305_tag"]
         )
 
+        alasan_ocr = ""
+        alasan_gambar = ""
+
         if not ocr_valid:
-            alasan = "Tag Poly1305 OCR tidak valid"
-            print("❌", alasan)
-            kirim_mqtt_invalid(payload, alasan)
-            simpan_log(payload, "invalid", alasan)
+            alasan_ocr = "Tag Poly1305 OCR tidak valid"
+            print("❌", alasan_ocr)
+            kirim_mqtt_invalid(payload, alasan_ocr)
+            simpan_log(payload, "invalid", alasan_ocr)
 
         if not gambar_valid:
-            alasan = "Tag Poly1305 Gambar tidak valid"
-            print("❌", alasan)
-            kirim_mqtt_invalid(payload, alasan)
-            simpan_log(payload, "invalid", alasan)
+            alasan_gambar = "Tag Poly1305 Gambar tidak valid"
+            print("❌", alasan_gambar)
+            kirim_mqtt_invalid(payload, alasan_gambar)
+            simpan_log(payload, "invalid", alasan_gambar)
 
-        if not ocr_valid or not gambar_valid:
-            return
-
-        ocr_text = ocr_plain.decode("utf-8")
+        ocr_text = ocr_plain.decode("utf-8") if ocr_valid else ""
         encrypt_ocr_ms = round(ocr_data.get("encrypt_time_ms", 0), 3)
         encrypt_img_ms = round(gambar_data.get("encrypt_time_ms", 0), 3)
         total_ms = round(encrypt_img_ms + decrypt_img_ms, 3)
@@ -154,8 +154,9 @@ def simpan_ke_database(payload):
         save_dir = os.path.join("static", "gambar_plat")
         os.makedirs(save_dir, exist_ok=True)
         save_path = os.path.join(save_dir, nama_file)
-        with open(save_path, "wb") as f:
-            f.write(gambar_bytes)
+        if gambar_valid:
+            with open(save_path, "wb") as f:
+                f.write(gambar_bytes)
 
         pelanggaran = Pelanggaran(
             waktu=waktu_obj,
@@ -170,12 +171,12 @@ def simpan_ke_database(payload):
             pelanggaran_id=pelanggaran.id,
             nonce=gambar_data["nonce"],
             poly1305_tag=gambar_data["poly1305_tag"],
-            poly1305_valid=True,
+            poly1305_valid=gambar_valid,
             ciphertext_len=len(gambar_data["ciphertext"]),
             encrypt_time_ms=encrypt_img_ms,
             decrypt_time_ms=decrypt_img_ms,
             total_process_ms=total_ms,
-            gambar_valid=True,
+            gambar_valid=gambar_valid,
             delivery_status="MQTT Received"
         )
         db.session.add(keamanan)
@@ -191,9 +192,10 @@ def simpan_ke_database(payload):
         db.session.add(gambar)
 
         db.session.commit()
-        info = f"✅ Data tersimpan: {payload['plat_nomor']} | Waktu: {total_ms} ms"
+        status_final = "valid" if ocr_valid and gambar_valid else "invalid"
+        info = f"✅ Data tersimpan dengan status {status_final.upper()}: {payload['plat_nomor']} | Waktu: {total_ms} ms"
         print(info)
-        simpan_log(payload, "valid", info)
+        simpan_log(payload, status_final, info)
 
     except Exception as e:
         error_info = f"Gagal menyimpan ke database: {e}"
