@@ -1,9 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, request
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify
 from datetime import datetime
 from collections import Counter
 from app.models import Pelanggaran   # ✅ BENAR, karena 'models.py
 from .. import db
 from sqlalchemy.orm import joinedload
+import os
+from flask import current_app
+
 
 
 main = Blueprint('main', __name__)
@@ -54,7 +57,7 @@ def dashboard():
 @main.route('/data')
 def data():
     page = request.args.get('page', 1, type=int)
-    per_page = 5
+    per_page = 10
 
     pagination = Pelanggaran.query.options(joinedload(Pelanggaran.gambars))\
         .order_by(Pelanggaran.waktu.desc())\
@@ -83,3 +86,27 @@ def keamanan():
 def keamanan_detail(id):
     record = Pelanggaran.query.get_or_404(id)
     return render_template('keamanan_detail.html', record=record)
+
+@main.route('/stream')
+def stream():
+    # Ambil data pelanggaran terbaru
+    record = Pelanggaran.query.order_by(Pelanggaran.waktu.desc()).first()
+    return render_template('stream.html', record=record)
+
+
+@main.route('/api/latest-time')
+def latest_time():
+    latest = Pelanggaran.query.order_by(Pelanggaran.waktu.desc()).first()
+    if latest and latest.waktu:
+        return jsonify({"last_time": latest.waktu.isoformat()})
+    return jsonify({"last_time": None})
+
+
+# @main.route('/upload_stream', methods=['POST'])
+# def upload_stream():
+#     image = request.files['image']
+#     # Simpan ke static/stream.jpg (folder static sejajar dengan run.py)
+#     save_path = os.path.join(current_app.root_path, '..', 'static', 'stream.jpg')
+#     image.save(os.path.abspath(save_path))
+#     return 'OK'
+

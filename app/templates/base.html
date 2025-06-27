@@ -94,6 +94,15 @@
               <span class="sidebar-icon">🔐</span> Log Keamanan
             </a>
           </li>
+
+          <li class="nav-item">
+            <a
+              class="nav-link {% if request.path.startswith('/stream') %}active{% endif %}"
+              href="/stream"
+            >
+              <span class="sidebar-icon">📹</span> Live Kamera
+            </a>
+          </li>
         </ul>
       </div>
 

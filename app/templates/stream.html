@@ -1,0 +1,184 @@
+{% extends "base.html" %} {% block title %}Live Kamera{% endblock %} {% block
+content %}
+
+<!-- Header -->
+<div class="px-4 py-4 mb-4 bg-dark text-white rounded-4 shadow-sm">
+  <h2 class="mb-1">📹 Live Kamera Raspberry Pi</h2>
+  <p class="text-light mb-0">
+    Menampilkan siaran langsung dan hasil deteksi OCR dari kendaraan secara
+    real-time.
+  </p>
+</div>
+
+<!-- Loading Spinner -->
+<div
+  id="loading-overlay"
+  style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+  "
+>
+  <div
+    class="spinner-border text-dark"
+    role="status"
+    style="width: 3rem; height: 3rem"
+  >
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p class="text-dark mt-3 fw-bold">Memproses plat nomor...</p>
+</div>
+
+<!-- Konten Utama -->
+<div class="row gx-4 gy-4">
+  <!-- Streaming Kamera -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow rounded-4 overflow-hidden h-100">
+      <div class="bg-dark text-white px-4 py-3">
+        <i class="bi bi-broadcast-pin me-2"></i
+        ><strong>Streaming Kamera</strong>
+      </div>
+      <div class="card-body bg-white text-center p-0">
+        <iframe
+          src="http://172.20.10.11:8080/video"
+          width="100%"
+          height="400"
+          style="border: none; border-radius: 0 0 8px 8px"
+          scrolling="no"
+          allow="autoplay"
+        ></iframe>
+        <div class="py-2">
+          <p class="text-muted mb-0 small">
+            🔁 Streaming langsung dari Raspberry Pi
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Informasi Deteksi dan Gambar -->
+  <div class="col-lg-5 d-flex flex-column gap-4">
+    <!-- Akurasi Deteksi -->
+    <div class="card border-0 shadow rounded-4">
+      <div class="bg-dark text-white px-4 py-3">
+        <i class="bi bi-bar-chart-line me-2"></i
+        ><strong>Akurasi Deteksi</strong>
+      </div>
+      <div
+        class="bg-white p-4 d-flex justify-content-between align-items-center"
+      >
+        <span class="badge bg-dark text-white fs-5 px-4 py-2"
+          >{{ record.confidence or 0 }}%</span
+        >
+        <p class="text-muted mb-0 small">Confidence YOLOv8 (update otomatis)</p>
+      </div>
+    </div>
+
+    <!-- Hasil OCR -->
+    <div class="card border-0 shadow rounded-4">
+      <div class="bg-dark text-white px-4 py-3">
+        <i class="bi bi-card-text me-2"></i
+        ><strong>Hasil OCR Plat Nomor</strong>
+      </div>
+      <div
+        class="bg-white p-4 d-flex justify-content-between align-items-center"
+      >
+        <h5 class="text-uppercase fw-bold mb-1" id="ocr-text">
+          {{ record.plat_nomor or "Belum tersedia" }}
+        </h5>
+        <p class="text-muted mb-0 small">
+          Teks hasil pembacaan OCR dari kendaraan
+        </p>
+      </div>
+    </div>
+
+    <!-- Validasi Poly1305 -->
+    <div class="card border-0 shadow rounded-4">
+      <div class="bg-dark text-white px-4 py-3">
+        <i class="bi bi-shield-check me-2"></i
+        ><strong>Status Validasi Poly1305</strong>
+      </div>
+      <div
+        class="bg-white p-4 d-flex justify-content-between align-items-center"
+      >
+        {% if record.keamanan %} {% if record.keamanan.poly1305_valid %}
+        <span class="badge bg-success fs-6 px-4 py-2">VALID</span>
+        <p class="text-muted mt-2 mb-0 small">
+          Payload tervalidasi dengan baik.
+        </p>
+        {% else %}
+        <span class="badge bg-danger fs-6 px-4 py-2">TIDAK VALID</span>
+        <p class="text-muted mt-2 mb-0 small">
+          Payload memiliki tag Poly1305 tidak sah.
+        </p>
+        {% endif %} {% else %}
+        <span class="badge bg-secondary fs-6 px-4 py-2"
+          >Belum Diverifikasi</span
+        >
+        <p class="text-muted mt-2 mb-0 small">Data keamanan belum tersedia.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Gambar Plat Nomor -->
+    <div class="card border-0 shadow rounded-4">
+      <div class="bg-dark text-white px-4 py-3">
+        <i class="bi bi-image me-2"></i><strong>Data Gambar Plat Nomor</strong>
+      </div>
+      <div class="card-body bg-light rounded-bottom-4">
+        {% if record.gambars %} {% for gambar in record.gambars %}
+        <div class="mb-4">
+          <div class="text-center mb-3">
+            <img
+              src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
+              alt="{{ gambar.nama_file }}"
+              class="img-fluid rounded shadow-sm"
+              style="
+                max-height: 200px;
+                object-fit: contain;
+                background-color: #f8f9fa;
+                padding: 0.5rem;
+              "
+              onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/error404.png') }}';"
+            />
+          </div>
+
+          {% if not loop.last %}
+          <hr class="my-4" />
+          {% endif %}
+        </div>
+        {% endfor %} {% else %}
+        <p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let latestTime =
+    "{{ record.waktu.isoformat() if record and record.waktu else '' }}";
+
+  setInterval(() => {
+    fetch("/api/latest-time")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.last_time && data.last_time !== latestTime) {
+          document.getElementById("loading-overlay").style.display = "flex";
+          setTimeout(() => {
+            location.reload();
+          }, 1000); // beri jeda sedikit agar terlihat loadingnya
+        }
+      });
+  }, 5000);
+</script>
+
+{% endblock %}
