@@ -68,47 +68,63 @@ def kirim_mqtt_invalid(payload, alasan: str):
         print(f"❌ Gagal kirim MQTT INVALID: {e}")
 
 # === Fungsi Logging ke File ===
-def simpan_log(payload: dict, status: str, keterangan: str):
-    waktu_log = datetime.now().isoformat()
-    log_entry = {
-        "waktu_log": waktu_log,
-        "plat_nomor": payload.get("plat_nomor", "UNKNOWN"),
-        "status": status,
-        "keterangan": keterangan,
-        "payload": payload
-    }
 
-    log_path = os.path.join(LOG_DIR, status)
-    os.makedirs(log_path, exist_ok=True)
+def simpan_log(payload: dict, status: str, keterangan: str, id_pelanggaran=None):
+    print(f"[LOG] Menyimpan log status={status} untuk plat={payload.get('plat_nomor')} at {payload.get('timestamp')}")
+    try:
+        waktu_obj = datetime.fromisoformat(payload["timestamp"])
+        waktu_str = waktu_obj.strftime('%Y-%m-%d %H:%M:%S')
 
-    nama_file = payload.get("gambar", {}).get("nama_file", "UNKNOWN")
-    cache_file = os.path.join(log_path, ".invalid_logged.json")
-    if status in ["invalid", "duplikat", "error"]:
-        if os.path.exists(cache_file):
-            with open(cache_file, "r") as f:
-                logged_files = json.load(f)
+        log_entry = {
+            "id_pelanggaran": id_pelanggaran,
+            "waktu_log": waktu_str,
+            "plat_nomor": payload.get("plat_nomor", "UNKNOWN"),
+            "status": status,
+            "keterangan": keterangan,
+            "payload": payload
+        }
+
+        # Buat folder berdasarkan status
+        log_path = os.path.join(LOG_DIR, status)
+        os.makedirs(log_path, exist_ok=True)
+
+        # Nama file berdasarkan ID pelanggaran jika tersedia
+        if id_pelanggaran is not None:
+            log_filename = f"{id_pelanggaran}.json"
         else:
-            logged_files = []
+            log_filename = waktu_obj.strftime('%Y-%m-%d_%H-%M-%S') + ".json"
 
-        if nama_file in logged_files:
-            print(f"⚠️ Log {status.upper()} untuk '{nama_file}' sudah dicatat sebelumnya, dilewati.")
-            return
+        log_file = os.path.join(log_path, log_filename)
 
-        filename = f"{waktu_log.replace(':', '-').replace('.', '-')}_{status}_{nama_file}.json"
-        log_file = os.path.join(log_path, filename)
+        # Hindari log ganda untuk invalid/duplikat
+        nama_file = payload.get("gambar", {}).get("nama_file", "UNKNOWN")
+        if status in ["invalid", "duplikat"]:
+            cache_file = os.path.join(log_path, ".invalid_logged.json")
+            if os.path.exists(cache_file):
+                with open(cache_file, "r") as f:
+                    logged_files = json.load(f)
+            else:
+                logged_files = []
+
+            if nama_file in logged_files:
+                print(f"⚠️ Log {status.upper()} untuk '{nama_file}' sudah dicatat sebelumnya, dilewati.")
+                return
+
+            logged_files.append(nama_file)
+            with open(cache_file, "w") as f:
+                json.dump(logged_files, f, indent=2)
+
+        # Tulis file log
         with open(log_file, "w") as f:
             json.dump(log_entry, f, indent=2)
 
-        logged_files.append(nama_file)
-        with open(cache_file, "w") as f:
-            json.dump(logged_files, f, indent=2)
-
-        print(f"📝 Log {status.upper()} baru ditulis:", log_file)
-    else:
-        log_file = os.path.join(log_path, f"log_{timestamp_str}.jsonl")
-        with open(log_file, "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
         print(f"📝 Log {status.upper()} ditulis:", log_file)
+
+    except Exception as e:
+        print(f"❌ Gagal menyimpan log {status}: {e}")
+
+
+
 
 # === Fungsi Simpan ke Database ===
 def simpan_ke_database(payload):
@@ -195,7 +211,9 @@ def simpan_ke_database(payload):
         status_final = "valid" if ocr_valid and gambar_valid else "invalid"
         info = f"✅ Data tersimpan dengan status {status_final.upper()}: {payload['plat_nomor']} | Waktu: {total_ms} ms"
         print(info)
-        simpan_log(payload, status_final, info)
+        simpan_log(payload, status_final, info, id_pelanggaran=pelanggaran.id)
+
+
 
     except Exception as e:
         error_info = f"Gagal menyimpan ke database: {e}"

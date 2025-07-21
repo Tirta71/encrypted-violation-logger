@@ -65,12 +65,27 @@ block content %}
           {% endif %}
         </td>
         <td>
-          <a
-            href="{{ url_for('main.keamanan_detail', id=item.id) }}"
-            class="btn btn-sm btn-outline-primary"
+          <div
+            class="d-flex flex-column align-items-center gap-2 position-relative"
           >
-            🔍 Detail
-          </a>
+            <a
+              href="{{ url_for('main.keamanan_detail', id=item.id) }}"
+              class="btn btn-sm btn-outline-primary w-100 position-relative text-center"
+            >
+              <i class="bi bi-search position-absolute start-0 ms-3"></i>
+              Detail
+            </a>
+
+            {% if item.is_logged %}
+            <a
+              href="{{ url_for('main.download_log_as_txt', id=item.id) }}"
+              class="btn btn-sm btn-outline-success w-100 position-relative text-center"
+            >
+              <i class="bi bi-download position-absolute start-0 ms-3"></i>
+              Log
+            </a>
+            {% endif %}
+          </div>
         </td>
       </tr>
       {% endfor %}

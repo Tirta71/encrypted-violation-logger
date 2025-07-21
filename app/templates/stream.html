@@ -52,18 +52,12 @@ content %}
         class="card-body bg-white d-flex justify-content-center align-items-center"
         style="height: 400px"
       >
-        <iframe
-          src="http://172.20.10.11:8080/video"
-          width="95%"
-          height="100%"
-          style="
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-          "
-          scrolling="no"
-          allow="autoplay"
-        ></iframe>
+        <!-- Awalnya tampilkan stream -->
+        <img
+          id="live-view"
+          src="{{ url_for('main.video_feed') }}"
+          style="width: 100%; border-radius: 10px"
+        />
       </div>
 
       <!-- Keterangan bawah -->
@@ -72,124 +66,163 @@ content %}
           🔁 Streaming langsung dari Raspberry Pi
         </p>
       </div>
+      <div class="text-end px-4 py-2">
+        <button
+          id="reset-button"
+          class="btn btn-sm btn-outline-dark"
+          onclick="resetToStream()"
+          style="display: none"
+        >
+          🔁 Kembali ke Live Stream
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Informasi Deteksi dan Gambar -->
   <div class="col-lg-5 d-flex flex-column gap-4">
-    <!-- Akurasi Deteksi -->
+    {% for record in records %}
     <div class="card border-0 shadow rounded-4">
       <div class="bg-dark text-white px-4 py-3">
-        <i class="bi bi-bar-chart-line me-2"></i
-        ><strong>Akurasi Deteksi</strong>
-      </div>
-      <div
-        class="bg-white p-4 d-flex justify-content-between align-items-center"
-      >
-        <span class="badge bg-dark text-white fs-5 px-4 py-2"
-          >{{ record.confidence or 0 }}%</span
+        <i class="bi bi-bar-chart-line me-2"></i>
+        <strong
+          >Pelanggaran: {{ record.waktu.strftime('%d-%m-%Y %H:%M:%S') }}</strong
         >
-        <p class="text-muted mb-0 small">Confidence YOLOv8 (update otomatis)</p>
       </div>
-    </div>
 
-    <!-- Hasil OCR -->
-    <div class="card border-0 shadow rounded-4">
-      <div class="bg-dark text-white px-4 py-3">
-        <i class="bi bi-card-text me-2"></i
-        ><strong>Hasil OCR Plat Nomor</strong>
-      </div>
-      <div
-        class="bg-white p-4 d-flex justify-content-between align-items-center"
-      >
-        <h5 class="text-uppercase fw-bold mb-1" id="ocr-text">
-          {{ record.plat_nomor or "Belum tersedia" }}
-        </h5>
-        <p class="text-muted mb-0 small">
-          Teks hasil pembacaan OCR dari kendaraan
+      <!-- Confidence -->
+      <div class="bg-white p-3">
+        <p class="mb-2">
+          <strong>Confidence:</strong>
+          <span class="badge bg-dark text-white fs-6 px-3 py-1"
+            >{{ record.confidence or 0 }}%</span
+          >
         </p>
-      </div>
-    </div>
 
-    <!-- Validasi Poly1305 -->
-    <div class="card border-0 shadow rounded-4">
-      <div class="bg-dark text-white px-4 py-3">
-        <i class="bi bi-shield-check me-2"></i
-        ><strong>Status Validasi Poly1305</strong>
-      </div>
-      <div
-        class="bg-white p-4 d-flex justify-content-between align-items-center"
-      >
-        {% if record.keamanan %} {% if record.keamanan.poly1305_valid %}
-        <span class="badge bg-success fs-6 px-4 py-2">VALID</span>
-        <p class="text-muted mt-2 mb-0 small">
-          Payload tervalidasi dengan baik.
+        <!-- Plat Nomor -->
+        <p class="mb-2">
+          <strong>Plat Nomor:</strong>
+          <span class="text-uppercase fw-bold"
+            >{{ record.plat_nomor or "Belum tersedia" }}</span
+          >
         </p>
-        {% else %}
-        <span class="badge bg-danger fs-6 px-4 py-2">TIDAK VALID</span>
-        <p class="text-muted mt-2 mb-0 small">
-          Payload memiliki tag Poly1305 tidak sah.
-        </p>
-        {% endif %} {% else %}
-        <span class="badge bg-secondary fs-6 px-4 py-2"
-          >Belum Diverifikasi</span
-        >
-        <p class="text-muted mt-2 mb-0 small">Data keamanan belum tersedia.</p>
-        {% endif %}
-      </div>
-    </div>
 
-    <!-- Gambar Plat Nomor -->
-    <div class="card border-0 shadow rounded-4">
-      <div class="bg-dark text-white px-4 py-3">
-        <i class="bi bi-image me-2"></i><strong>Data Gambar Plat Nomor</strong>
-      </div>
-      <div class="card-body bg-light rounded-bottom-4">
-        {% if record.gambars %} {% for gambar in record.gambars %}
-        <div class="mb-4">
-          <div class="text-center mb-3">
+        <!-- Validasi -->
+        <p class="mb-2">
+          <strong>Poly1305:</strong>
+          {% if record.keamanan %} {% if record.keamanan.poly1305_valid %}
+          <span class="badge bg-success fs-6 px-3 py-1">VALID</span>
+          {% else %}
+          <span class="badge bg-danger fs-6 px-3 py-1">TIDAK VALID</span>
+          {% endif %} {% else %}
+          <span class="badge bg-secondary fs-6 px-3 py-1"
+            >Belum Diverifikasi</span
+          >
+          {% endif %}
+        </p>
+
+        <!-- Gambar -->
+        {% if record.gambars %}
+        <div class="row">
+          {% for gambar in record.gambars %}
+          <div class="col-6 text-center mb-3">
             <img
               src="{{ url_for('static', filename='gambar_plat/' ~ gambar.nama_file) }}"
               alt="{{ gambar.nama_file }}"
               class="img-fluid rounded shadow-sm"
-              style="
-                max-height: 200px;
-                object-fit: contain;
-                background-color: #f8f9fa;
-                padding: 0.5rem;
-              "
+              style="max-height: 150px; object-fit: contain"
               onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/error404.png') }}';"
             />
           </div>
-
-          {% if not loop.last %}
-          <hr class="my-4" />
-          {% endif %}
+          {% endfor %}
         </div>
-        {% endfor %} {% else %}
+        {% else %}
         <p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>
         {% endif %}
       </div>
     </div>
+    {% endfor %}
   </div>
 </div>
 
 <script>
   let latestTime =
-    "{{ record.waktu.isoformat() if record and record.waktu else '' }}";
+    "{{ records[0].waktu.isoformat() if records and records[0].waktu else '' }}";
+  let hasSwitchedToImage = false;
+
+  function resetToStream() {
+    const view = document.getElementById("live-view");
+    view.src = "{{ url_for('main.video_feed') }}";
+    hasSwitchedToImage = false;
+    document.getElementById("reset-button").style.display = "none";
+  }
 
   setInterval(() => {
     fetch("/api/latest-time")
       .then((res) => res.json())
       .then((data) => {
-        if (data.last_time && data.last_time !== latestTime) {
+        if (
+          !hasSwitchedToImage &&
+          data.last_time &&
+          data.last_time !== latestTime
+        ) {
+          latestTime = data.last_time;
           document.getElementById("loading-overlay").style.display = "flex";
+
           setTimeout(() => {
-            location.reload();
-          }, 1000); // beri jeda sedikit agar terlihat loadingnya
+            // Ganti ke gambar terbaru
+            const view = document.getElementById("live-view");
+            view.src = "/stream/latest-image?cache=" + new Date().getTime();
+            hasSwitchedToImage = true;
+
+            // Ambil data pelanggaran terbaru
+            fetch("/api/latest-records")
+              .then((res) => res.json())
+              .then((records) => {
+                const container = document.querySelector(".col-lg-5");
+                container.innerHTML = ""; // kosongkan isi lama
+
+                records.forEach((r) => {
+                  const badge =
+                    r.poly1305_valid === true
+                      ? `<span class="badge bg-success fs-6 px-3 py-1">VALID</span>`
+                      : r.poly1305_valid === false
+                      ? `<span class="badge bg-danger fs-6 px-3 py-1">TIDAK VALID</span>`
+                      : `<span class="badge bg-secondary fs-6 px-3 py-1">Belum Diverifikasi</span>`;
+
+                  const gambarHTML = r.gambar
+                    ? `<div class="col-6 text-center mb-3">
+                        <img src="${r.gambar}" class="img-fluid rounded shadow-sm" style="max-height: 150px; object-fit: contain;" />
+                      </div>`
+                    : `<p class="text-muted text-center mb-0">Tidak ada gambar tersedia.</p>`;
+
+                  container.innerHTML += `
+                    <div class="card border-0 shadow rounded-4">
+                      <div class="bg-dark text-white px-4 py-3">
+                        <i class="bi bi-bar-chart-line me-2"></i>
+                        <strong>Pelanggaran: ${r.waktu}</strong>
+                      </div>
+                      <div class="bg-white p-3">
+                        <p class="mb-2"><strong>Confidence:</strong>
+                          <span class="badge bg-dark text-white fs-6 px-3 py-1">${r.confidence}%</span>
+                        </p>
+                        <p class="mb-2"><strong>Plat Nomor:</strong>
+                          <span class="text-uppercase fw-bold">${r.plat_nomor}</span>
+                        </p>
+                        <p class="mb-2"><strong>Poly1305:</strong> ${badge}</p>
+                        <div class="row">${gambarHTML}</div>
+                      </div>
+                    </div>`;
+                });
+              });
+
+            document.getElementById("loading-overlay").style.display = "none";
+            document.getElementById("reset-button").style.display =
+              "inline-block";
+          }, 1500);
         }
       });
-  }, 5000);
+  }, 3000);
 </script>
 
 {% endblock %}
