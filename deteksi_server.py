@@ -4,7 +4,7 @@ from ultralytics import YOLO
 model = YOLO("model/best.pt")
 
 def gen_frames():
-    cap = cv2.VideoCapture("http://192.168.197.43:8080/video")
+    cap = cv2.VideoCapture("http://172.20.10.11:8080/video")
     while True:
         ret, frame = cap.read()
         if not ret:
