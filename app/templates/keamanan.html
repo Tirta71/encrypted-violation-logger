@@ -76,13 +76,23 @@ block content %}
               Detail
             </a>
 
-            {% if item.is_logged %}
+            {% if item.valid_logged %}
             <a
               href="{{ url_for('main.download_log_as_txt', id=item.id) }}"
               class="btn btn-sm btn-outline-success w-100 position-relative text-center"
+              title="Download log valid"
             >
               <i class="bi bi-download position-absolute start-0 ms-3"></i>
-              Log
+              Log Valid
+            </a>
+            {% endif %} {% if item.invalid_logged %}
+            <a
+              href="{{ url_for('main.download_log_invalid_as_txt', id=item.id) }}"
+              class="btn btn-sm btn-outline-danger w-100 position-relative text-center"
+              title="Download log invalid"
+            >
+              <i class="bi bi-download position-absolute start-0 ms-3"></i>
+              Log Invalid
             </a>
             {% endif %}
           </div>

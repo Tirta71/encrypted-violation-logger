@@ -3,9 +3,9 @@ import os
 import time
 import json
 from datetime import datetime
+
 import paho.mqtt.client as mqtt
 import certifi
-import hashlib
 from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 
 from app import db
@@ -22,13 +22,11 @@ MQTT_INVALID_TOPIC = "plat/ocr/invalid"
 KEY_B64 = "kKgTWK1FuLFlHrxRX8xlE7e9IYvqqMaI8CyZGhmmu6c="
 KEY = base64.b64decode(KEY_B64)
 
-# === Log File ===
+# === Log Dir ===
 LOG_DIR = "logs"
-timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-LOG_FILE = os.path.join(LOG_DIR, f"log_{timestamp_str}.jsonl")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# === Fungsi Dekripsi ===
+# === Dekripsi ===
 def decrypt_chacha(nonce_b64, ciphertext_b64, tag_b64):
     try:
         nonce = base64.b64decode(nonce_b64)
@@ -40,10 +38,10 @@ def decrypt_chacha(nonce_b64, ciphertext_b64, tag_b64):
         plaintext = chacha.decrypt(nonce, ciphertext + tag, None)
         decrypt_time = round((time.perf_counter() - start) * 1000, 3)
         return plaintext, decrypt_time, True
-    except Exception as e:
-        return b"", 0, False
+    except Exception:
+        return b"", 0.0, False
 
-# === Fungsi Kirim Notifikasi MQTT ===
+# === MQTT Notif INVALID ===
 def kirim_mqtt_invalid(payload, alasan: str):
     try:
         client = mqtt.Client()
@@ -60,17 +58,16 @@ def kirim_mqtt_invalid(payload, alasan: str):
         }
 
         client.publish(MQTT_INVALID_TOPIC, json.dumps(notif), qos=1)
-        time.sleep(1)
+        time.sleep(0.5)
         client.loop_stop()
         client.disconnect()
         print("📡 Notifikasi INVALID dikirim ke MQTT.")
     except Exception as e:
         print(f"❌ Gagal kirim MQTT INVALID: {e}")
 
-# === Fungsi Logging ke File ===
-
+# === Logging ke file ===
 def simpan_log(payload: dict, status: str, keterangan: str, id_pelanggaran=None):
-    print(f"[LOG] Menyimpan log status={status} untuk plat={payload.get('plat_nomor')} at {payload.get('timestamp')}")
+    print(f"[LOG] Menyimpan log status={status} plat={payload.get('plat_nomor')} at {payload.get('timestamp')}")
     try:
         waktu_obj = datetime.fromisoformat(payload["timestamp"])
         waktu_str = waktu_obj.strftime('%Y-%m-%d %H:%M:%S')
@@ -84,19 +81,13 @@ def simpan_log(payload: dict, status: str, keterangan: str, id_pelanggaran=None)
             "payload": payload
         }
 
-        # Buat folder berdasarkan status
         log_path = os.path.join(LOG_DIR, status)
         os.makedirs(log_path, exist_ok=True)
 
-        # Nama file berdasarkan ID pelanggaran jika tersedia
-        if id_pelanggaran is not None:
-            log_filename = f"{id_pelanggaran}.json"
-        else:
-            log_filename = waktu_obj.strftime('%Y-%m-%d_%H-%M-%S') + ".json"
-
+        log_filename = f"{id_pelanggaran}.json" if id_pelanggaran is not None else waktu_obj.strftime('%Y-%m-%d_%H-%M-%S') + ".json"
         log_file = os.path.join(log_path, log_filename)
 
-        # Hindari log ganda untuk invalid/duplikat
+        # Hindari log ganda utk invalid/duplikat
         nama_file = payload.get("gambar", {}).get("nama_file", "UNKNOWN")
         if status in ["invalid", "duplikat"]:
             cache_file = os.path.join(log_path, ".invalid_logged.json")
@@ -107,26 +98,22 @@ def simpan_log(payload: dict, status: str, keterangan: str, id_pelanggaran=None)
                 logged_files = []
 
             if nama_file in logged_files:
-                print(f"⚠️ Log {status.upper()} untuk '{nama_file}' sudah dicatat sebelumnya, dilewati.")
+                print(f"⚠️ Log {status.upper()} untuk '{nama_file}' sudah dicatat, lewati.")
                 return
 
             logged_files.append(nama_file)
             with open(cache_file, "w") as f:
                 json.dump(logged_files, f, indent=2)
 
-        # Tulis file log
         with open(log_file, "w") as f:
             json.dump(log_entry, f, indent=2)
 
-        print(f"📝 Log {status.upper()} ditulis:", log_file)
+        print(f"📝 Log {status.upper()} ditulis: {log_file}")
 
     except Exception as e:
         print(f"❌ Gagal menyimpan log {status}: {e}")
 
-
-
-
-# === Fungsi Simpan ke Database ===
+# === Simpan ke DB (tanpa main) ===
 def simpan_ke_database(payload):
     try:
         waktu_obj = datetime.fromisoformat(payload["timestamp"])
@@ -134,12 +121,14 @@ def simpan_ke_database(payload):
         ocr_data = payload["ocr"]
         nama_file = gambar_data["nama_file"]
 
+        # Cegah duplikat berdasarkan nama file gambar
         if Gambar.query.filter_by(nama_file=nama_file).first():
             info = f"⚠️ Duplikat file: {nama_file} sudah ada di database."
             print(info)
             simpan_log(payload, "duplikat", info)
             return
 
+        # Dekripsi
         ocr_plain, decrypt_ocr_ms, ocr_valid = decrypt_chacha(
             ocr_data["nonce"], ocr_data["ciphertext"], ocr_data["poly1305_tag"]
         )
@@ -147,42 +136,43 @@ def simpan_ke_database(payload):
             gambar_data["nonce"], gambar_data["ciphertext"], gambar_data["poly1305_tag"]
         )
 
-        alasan_ocr = ""
-        alasan_gambar = ""
-
+        # Kumpulkan alasan invalid (jangan log dulu)
+        invalid_reasons = []
         if not ocr_valid:
-            alasan_ocr = "Tag Poly1305 OCR tidak valid"
-            print("❌", alasan_ocr)
-            kirim_mqtt_invalid(payload, alasan_ocr)
-            simpan_log(payload, "invalid", alasan_ocr)
-
+            payload["plat_nomor"] = "UNKNOWN"
+            invalid_reasons.append("Tag Poly1305 OCR tidak valid")
         if not gambar_valid:
-            alasan_gambar = "Tag Poly1305 Gambar tidak valid"
-            print("❌", alasan_gambar)
-            kirim_mqtt_invalid(payload, alasan_gambar)
-            simpan_log(payload, "invalid", alasan_gambar)
+            invalid_reasons.append("Tag Poly1305 Gambar tidak valid")
 
-        ocr_text = ocr_plain.decode("utf-8") if ocr_valid else ""
-        encrypt_ocr_ms = round(ocr_data.get("encrypt_time_ms", 0), 3)
-        encrypt_img_ms = round(gambar_data.get("encrypt_time_ms", 0), 3)
+        # Waktu proses (fallback 0 kalau field tidak ada)
+        encrypt_ocr_ms = round(ocr_data.get("encrypt_time_ms", 0.0), 3)
+        encrypt_img_ms = round(gambar_data.get("encrypt_time_ms", 0.0), 3)
         total_ms = round(encrypt_img_ms + decrypt_img_ms, 3)
 
-        save_dir = os.path.join("static", "gambar_plat")
-        os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, nama_file)
+        # Simpan file gambar hanya jika valid
         if gambar_valid:
+            save_dir = os.path.join("static", "gambar_plat")
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, nama_file)
             with open(save_path, "wb") as f:
                 f.write(gambar_bytes)
 
+        # Buat entri Pelanggaran dulu supaya punya ID (untuk nama file log)
         pelanggaran = Pelanggaran(
             waktu=waktu_obj,
-            plat_nomor=payload["plat_nomor"],
+            plat_nomor=payload.get("plat_nomor", "UNKNOWN"),
             confidence=payload["confidence"],
             device_id=payload["device_id"]
         )
         db.session.add(pelanggaran)
         db.session.commit()
 
+        # Kirim notif & tulis log INVALID pakai id_pelanggaran
+        for reason in invalid_reasons:
+            kirim_mqtt_invalid(payload, reason)
+            simpan_log(payload, "invalid", reason, id_pelanggaran=pelanggaran.id)
+
+        # Simpan keamanan & metadata gambar
         keamanan = Keamanan(
             pelanggaran_id=pelanggaran.id,
             nonce=gambar_data["nonce"],
@@ -201,21 +191,23 @@ def simpan_ke_database(payload):
             nama_file=nama_file,
             tipe="crop",
             resolusi="400x130",
-            ukuran_byte=gambar_data["ukuran_byte"],
-            ukuran_terenkripsi=gambar_data["ukuran_terenkripsi"],
+            ukuran_byte=gambar_data.get("ukuran_byte", 0),
+            ukuran_terenkripsi=gambar_data.get("ukuran_terenkripsi", 0),
             pelanggaran_id=pelanggaran.id
         )
         db.session.add(gambar)
 
         db.session.commit()
-        status_final = "valid" if ocr_valid and gambar_valid else "invalid"
-        info = f"✅ Data tersimpan dengan status {status_final.upper()}: {payload['plat_nomor']} | Waktu: {total_ms} ms"
+
+        status_final = "valid" if (ocr_valid and gambar_valid) else "invalid"
+        info = f"✅ Data tersimpan [{status_final.upper()}] {payload.get('plat_nomor','UNKNOWN')} | Total(ms): {total_ms}"
         print(info)
+        # Ringkasan akhir: pakai id_pelanggaran juga biar penamaan log konsisten
         simpan_log(payload, status_final, info, id_pelanggaran=pelanggaran.id)
-
-
 
     except Exception as e:
         error_info = f"Gagal menyimpan ke database: {e}"
         print("❌", error_info)
-        simpan_log(payload, "error", error_info)
+        safe_payload = payload if isinstance(payload, dict) else {"timestamp": datetime.now().isoformat()}
+        simpan_log(safe_payload, "error", error_info)
+

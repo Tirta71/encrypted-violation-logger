@@ -151,27 +151,53 @@ def keamanan():
     pagination = Pelanggaran.query.order_by(Pelanggaran.waktu.desc()).paginate(page=page, per_page=per_page)
     data = pagination.items
 
-    log_map = {}
+    # --- baca log VALID ---
+    log_valid_map = {}
     for filepath in glob.glob("logs/valid/*.json"):
         try:
             with open(filepath, "r") as f:
                 log_data = json.load(f)
                 log_id = log_data.get("id_pelanggaran")
                 if log_id is not None:
-                    log_map[int(log_id)] = log_data
+                    log_valid_map[int(log_id)] = log_data
         except Exception as e:
-            print(f"Gagal baca log: {filepath} - {e}")
+            print(f"Gagal baca log valid: {filepath} - {e}")
 
+    # --- baca log INVALID ---
+    log_invalid_map = {}
+    for filepath in glob.glob("logs/invalid/*.json"):
+        try:
+            with open(filepath, "r") as f:
+                log_data = json.load(f)
+                log_id = log_data.get("id_pelanggaran")
+                if log_id is not None:
+                    log_invalid_map[int(log_id)] = log_data
+        except Exception as e:
+            print(f"Gagal baca log invalid: {filepath} - {e}")
+
+    # tempelkan ringkasan ke item
     for item in data:
-        if item.id in log_map:
-            item.is_logged = True
-            payload = log_map[item.id].get("payload", {})
-            item.log_summary = f"Plat: {payload.get('plat_nomor', 'N/A')} | Confidence: {payload.get('confidence', 'N/A')}"
+        # valid
+        if item.id in log_valid_map:
+            item.valid_logged = True
+            payload = log_valid_map[item.id].get("payload", {})
+            item.valid_log_summary = f"Plat: {payload.get('plat_nomor', 'N/A')} | Confidence: {payload.get('confidence', 'N/A')}"
         else:
-            item.is_logged = False
-            item.log_summary = ""
+            item.valid_logged = False
+            item.valid_log_summary = ""
+
+        # invalid
+        if item.id in log_invalid_map:
+            item.invalid_logged = True
+            payload = log_invalid_map[item.id].get("payload", {})
+            ket = log_invalid_map[item.id].get("keterangan", "")
+            item.invalid_log_summary = f"Plat: {payload.get('plat_nomor', 'N/A')} | Alasan: {ket or 'INVALID'}"
+        else:
+            item.invalid_logged = False
+            item.invalid_log_summary = ""
 
     return render_template('keamanan.html', data=data, pagination=pagination)
+
 
 
 # Routes Download Log Keamanan Data
@@ -249,6 +275,82 @@ def download_log_as_txt(id):
             "Content-Disposition": f"attachment; filename=log_valid_{id}.txt"
         }
     )
+
+@main.route('/keamanan/download_txt_invalid/<int:id>')
+def download_log_invalid_as_txt(id):
+    log_path = os.path.abspath(os.path.join(current_app.root_path, "..", "logs", "invalid", f"{id}.json"))
+
+    if not os.path.exists(log_path):
+        return f"❌ Log invalid untuk ID {id} tidak ditemukan.", 404
+
+    with open(log_path, "r") as file:
+        data = json.load(file)
+
+    payload = data.get("payload", {})
+    ocr = payload.get("ocr", {})
+    gambar = payload.get("gambar", {})
+
+    def row(label, value, width=27):
+        value_str = str(value)
+        if len(value_str) > 80:
+            value_str = value_str[:77] + "..."
+        return f"| {label:<{width}} | {value_str:<80} |\n"
+
+    line = "=" * 114 + "\n"
+    sep = "-" * 114 + "\n"
+
+    content = ""
+    content += line
+    content += f"|{'LOG PELANGGARAN (INVALID) ID':^112}|\n"
+    content += f"|{'ID ' + str(data.get('id_pelanggaran', '-')):^112}|\n"
+    content += line
+
+    content += row("Waktu Log", data.get("waktu_log", "-"))
+    content += row("Plat Nomor", data.get("plat_nomor", "-"))
+    content += row("Status", data.get("status", "-"))
+    content += row("Keterangan", data.get("keterangan", "-"))
+
+    content += sep
+    content += f"|{'DETAIL PAYLOAD':^112}|\n"
+    content += sep
+
+    content += row("Timestamp", payload.get("timestamp", "-"))
+    content += row("Device ID", payload.get("device_id", "-"))
+    content += row("Confidence", f"{payload.get('confidence', '-')}%")
+    content += row("Plat Nomor (OCR)", payload.get("plat_nomor", "-"))
+
+    content += sep
+    content += f"|{'ENKRIPSI OCR':^112}|\n"
+    content += sep
+
+    content += row("Nonce", ocr.get("nonce", "-"))
+    content += row("Ciphertext", ocr.get("ciphertext", "-"))
+    content += row("Poly1305 Tag", ocr.get("poly1305_tag", "-"))
+
+    content += sep
+    content += f"|{'ENKRIPSI GAMBAR':^112}|\n"
+    content += sep
+
+    content += row("Nama File", gambar.get("nama_file", "-"))
+    content += row("Ukuran (Byte)", gambar.get("ukuran_byte", "-"))
+    content += row("Ukuran Terenkripsi", gambar.get("ukuran_terenkripsi", "-"))
+    content += row("Nonce", gambar.get("nonce", "-"))
+
+    ciphertext = gambar.get("ciphertext", "")
+    preview = ciphertext[:80] + ("..." if len(ciphertext) > 80 else "")
+    content += row("Ciphertext", preview)
+    content += row("Total Panjang Cipher", len(ciphertext))
+
+    content += line
+
+    return Response(
+        content,
+        mimetype='text/plain',
+        headers={
+            "Content-Disposition": f"attachment; filename=log_invalid_{id}.txt"
+        }
+    )
+
 
 
 
